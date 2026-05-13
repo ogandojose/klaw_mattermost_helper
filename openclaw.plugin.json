@@ -12,6 +12,47 @@
       "mattermost_get_thread_context",
       "mattermost_list_channels",
       "mattermost_get_channel_history"
-    ]
-  }
+    ]  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["botToken", "baseUrl", "teamId", "allowedChannels"],
+    "properties": {
+      "botToken": {
+        "type": "string",
+        "description": "Mattermost bot token (from Bot Accounts page)"
+      },
+      "baseUrl": {
+        "type": "string",
+        "description": "Mattermost base URL, e.g. https://chat.example.com"
+      },
+      "teamId": {
+        "type": "string",
+        "description": "Mattermost team ID to scope searches to"
+      },
+      "allowedChannels": {
+        "type": "array",
+        "items": { "type": "string" },
+        "minItems": 1,
+        "description": "Channel names or IDs the plugin is allowed to search"
+      }
+    }
+  },
+  "uiHints": {
+    "botToken": {
+      "label": "Bot Token",
+      "sensitive": true,
+      "placeholder": "mm-bot-..."
+    },
+    "baseUrl": {
+      "label": "Mattermost URL",
+      "placeholder": "https://chat.example.com"
+    },
+    "teamId": {
+      "label": "Team ID"
+    },
+    "allowedChannels": {
+      "label": "Allowed Channels",
+      "help": "List of channel names or IDs to restrict searches to"
+    }  }
 }
