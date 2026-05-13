@@ -46,29 +46,31 @@ export default definePluginEntry({
   description: "Search and explore Mattermost channels and conversations",
 
   register(api) {
-    // Guard side effects during capability-discovery passes.
-    // Tools must still be registered so OpenClaw's registry snapshot
-    // classifies this plugin as a tool provider, not "non-capability".
-    if (api.registrationMode !== "full") return;
+    // In full mode: initialise client and start resolving channels.
+    // In discovery mode: reject immediately so tools are registered (required
+    // for capability-snapshot / non-capability classification) but never
+    // actually executed, and no network side effects are triggered.
+    const ctxPromise: Promise<ToolContext> = api.registrationMode === "full"
+      ? (async () => {
+          const config = validateConfig(api.pluginConfig);
+          const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
+          const channelsPromise = resolveChannels(client, config.allowedChannels);
+          return { client, channelsPromise };
+        })()
+      : Promise.reject(new Error("discovery-only load — not executed"));
 
-    // Build context lazily so tools are always registered even when the
-    // plugin is not yet configured.  Each tool awaits ctxPromise at
-    // execution time and surfaces a helpful error if config is missing.
-    const ctxPromise: Promise<ToolContext> = (async () => {
-      const config = validateConfig(api.pluginConfig);
-      const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
-      const channelsPromise = resolveChannels(client, config.allowedChannels);
-      return { client, channelsPromise };
-    })();
-
-    // Log config/resolution errors without blocking registration.
+    // Suppress unhandled-rejection noise; log config errors in full mode.
     ctxPromise.catch((err) => {
-      console.warn(
-        `[mattermost-search] Plugin not configured: ${err}. ` +
-        `Set plugins.entries.mattermost-search.config in openclaw.json and restart the gateway.`
-      );
+      if (api.registrationMode === "full") {
+        console.warn(
+          `[mattermost-search] Plugin not configured: ${err}. ` +
+          `Set plugins.entries.mattermost-search.config in openclaw.json and restart the gateway.`
+        );
+      }
     });
 
+    // Always register tools so OpenClaw's registry snapshot classifies
+    // this plugin as a tool provider (plain-capability, not non-capability).
     api.registerTool(makeSearchMessagesTool(ctxPromise));
     api.registerTool(makeGetThreadContextTool(ctxPromise));
     api.registerTool(makeListChannelsTool(ctxPromise));
