@@ -6,11 +6,16 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/tools.test.ts"
   },
   "openclaw": {
-    "extensions": ["./src/index.ts"],
-    "runtimeExtensions": ["./dist/index.js"],
+    "extensions": [
+      "./src/index.ts"
+    ],
+    "runtimeExtensions": [
+      "./dist/index.js"
+    ],
     "compat": {
       "pluginApi": ">=2026.3.24-beta.2",
       "minGatewayVersion": "2026.3.24-beta.2"
@@ -24,7 +29,8 @@
     "@sinclair/typebox": "^0.34.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.0",
-    "openclaw": "latest"
+    "openclaw": "latest",
+    "tsx": "^4.21.0",
+    "typescript": "^5.4.0"
   }
 }
