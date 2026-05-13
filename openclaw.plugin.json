@@ -1,0 +1,17 @@
+{
+  "id": "mattermost-search",
+  "name": "Mattermost Search",
+  "description": "Search Mattermost messages and retrieve conversation context within configured channels.",
+  "version": "1.0.0",
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "mattermost_search_messages",
+      "mattermost_get_thread_context",
+      "mattermost_list_channels",
+      "mattermost_get_channel_history"
+    ]
+  }
+}
