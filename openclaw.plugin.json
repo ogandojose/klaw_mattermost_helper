@@ -16,7 +16,6 @@
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
-    "required": ["botToken", "baseUrl", "teamId", "allowedChannels"],
     "properties": {
       "botToken": {
         "type": "string",

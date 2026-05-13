@@ -1,5 +1,5 @@
 {
-  "name": "@myorg/openclaw-mattermost-search",
+  "name": "mattermost-search",
   "version": "1.0.0",
   "type": "module",
   "description": "OpenClaw plugin to search Mattermost messages and retrieve conversation context",
