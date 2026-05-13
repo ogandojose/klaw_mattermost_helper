@@ -50,7 +50,13 @@ export default definePluginEntry({
 
     // api.config contains the value from plugins.entries.mattermost-search.config
     const rawConfig = (api as unknown as Record<string, unknown>)["config"];
-    const config = validateConfig(rawConfig);
+    let config;
+    try {
+      config = validateConfig(rawConfig);
+    } catch (err) {
+      console.warn(`[mattermost-search] Plugin not configured: ${err}. Set plugins.entries.mattermost-search.config in openclaw.json and restart the gateway.`);
+      return;
+    }
 
     const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
 
