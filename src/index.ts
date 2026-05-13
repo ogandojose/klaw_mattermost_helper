@@ -48,8 +48,8 @@ export default definePluginEntry({
     // Skip side-effect work during capability-discovery passes.
     if (api.registrationMode !== "full") return;
 
-    // api.config contains the value from plugins.entries.mattermost-search.config
-    const rawConfig = (api as unknown as Record<string, unknown>)["config"];
+    // api.pluginConfig contains the value from plugins.entries.mattermost-search.config
+    const rawConfig = api.pluginConfig;
     let config;
     try {
       config = validateConfig(rawConfig);
