@@ -8,12 +8,43 @@ import {
   makeGetChannelHistoryTool,
 } from "./tools.js";
 
+async function resolveChannels(
+  client: MattermostClient,
+  allowedChannelNames: string[]
+): Promise<ResolvedChannel[]> {
+  const resolved: ResolvedChannel[] = [];
+  for (const nameOrId of allowedChannelNames) {
+    try {
+      const ch = await client.getChannel(nameOrId);
+      resolved.push({ id: ch.id, name: ch.name, displayName: ch.display_name });
+    } catch {
+      try {
+        const ch = await client.resolveChannelName(nameOrId);
+        resolved.push({ id: ch.id, name: ch.name, displayName: ch.display_name });
+      } catch (err) {
+        console.warn(`[mattermost-search] Could not resolve channel "${nameOrId}" — skipping: ${err}`);
+      }
+    }
+  }
+  if (resolved.length === 0) {
+    throw new Error(
+      "[mattermost-search] No channels could be resolved from config.allowedChannels. " +
+        "Check that channel names/IDs are correct and the bot has access to them."
+    );
+  }
+  console.log(
+    `[mattermost-search] Resolved ${resolved.length} channel(s): ` +
+      resolved.map((c) => `#${c.displayName}`).join(", ")
+  );
+  return resolved;
+}
+
 export default definePluginEntry({
   id: "mattermost-search",
   name: "Mattermost Search",
   description: "Search and explore Mattermost channels and conversations",
 
-  async register(api) {
+  register(api) {
     // Skip side-effect work during capability-discovery passes.
     if (api.registrationMode !== "full") return;
 
@@ -23,40 +54,12 @@ export default definePluginEntry({
 
     const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
 
-    // Resolve each configured channel name or ID at startup.
-    // Non-fatal for individual failures so a typo doesn't block the whole plugin.
-    const allowedChannels: ResolvedChannel[] = [];
-    for (const nameOrId of config.allowedChannels) {
-      try {
-        // Attempt to treat the value as an opaque channel ID first.
-        const ch = await client.getChannel(nameOrId);
-        allowedChannels.push({ id: ch.id, name: ch.name, displayName: ch.display_name });
-      } catch {
-        try {
-          // Fall back to resolving it as a channel URL-slug name.
-          const ch = await client.resolveChannelName(nameOrId);
-          allowedChannels.push({ id: ch.id, name: ch.name, displayName: ch.display_name });
-        } catch (err) {
-          console.warn(
-            `[mattermost-search] Could not resolve channel "${nameOrId}" — skipping: ${err}`
-          );
-        }
-      }
-    }
+    // Kick off channel resolution in the background.
+    // Each tool awaits this promise before executing, so resolution happens
+    // on the first tool call rather than blocking plugin registration.
+    const channelsPromise = resolveChannels(client, config.allowedChannels);
 
-    if (allowedChannels.length === 0) {
-      throw new Error(
-        "[mattermost-search] No channels could be resolved from config.allowedChannels. " +
-          "Check that channel names/IDs are correct and the bot has access to them."
-      );
-    }
-
-    console.log(
-      `[mattermost-search] Ready. Allowed channels (${allowedChannels.length}): ` +
-        allowedChannels.map((c) => `#${c.displayName}`).join(", ")
-    );
-
-    const ctx = { client, allowedChannels };
+    const ctx = { client, channelsPromise };
 
     api.registerTool(makeSearchMessagesTool(ctx));
     api.registerTool(makeGetThreadContextTool(ctx));
@@ -64,3 +67,4 @@ export default definePluginEntry({
     api.registerTool(makeGetChannelHistoryTool(ctx));
   },
 });
+

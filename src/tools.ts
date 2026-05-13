@@ -4,7 +4,7 @@ import type { ResolvedChannel } from "./config.js";
 
 export interface ToolContext {
   client: MattermostClient;
-  allowedChannels: ResolvedChannel[];
+  channelsPromise: Promise<ResolvedChannel[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -106,7 +106,8 @@ export function makeSearchMessagesTool(ctx: ToolContext) {
       "Supports Mattermost search syntax (quoted phrases, from:user, before/after dates).",
     parameters: SearchMessagesParams,
     async execute(_id: string, params: Static<typeof SearchMessagesParams>) {
-      const { client, allowedChannels } = ctx;
+      const { client, channelsPromise } = ctx;
+      const allowedChannels = await channelsPromise;
       const { query, channelId } = params;
 
       let targetChannels: ResolvedChannel[];
@@ -153,7 +154,8 @@ export function makeGetThreadContextTool(ctx: ToolContext) {
       "Use this to understand the context of a message found via mattermost_search_messages.",
     parameters: GetThreadContextParams,
     async execute(_id: string, params: Static<typeof GetThreadContextParams>) {
-      const { client, allowedChannels } = ctx;
+      const { client, channelsPromise } = ctx;
+      const allowedChannels = await channelsPromise;
       const { postId, channelId, threadMode } = params;
       const before = Math.min(params.before ?? 5, 25);
       const after = Math.min(params.after ?? 5, 25);
@@ -200,7 +202,7 @@ export function makeListChannelsTool(ctx: ToolContext) {
     description: "List all Mattermost channels this plugin is configured to access.",
     parameters: ListChannelsParams,
     async execute(_id: string, _params: Static<typeof ListChannelsParams>) {
-      const { allowedChannels } = ctx;
+      const allowedChannels = await ctx.channelsPromise;
       const lines = allowedChannels.map(
         (c) => `• ${c.displayName}  (name: ${c.name}, id: ${c.id})`
       );
@@ -216,7 +218,8 @@ export function makeGetChannelHistoryTool(ctx: ToolContext) {
     description: "Fetch the most recent messages from a Mattermost channel, newest first.",
     parameters: GetChannelHistoryParams,
     async execute(_id: string, params: Static<typeof GetChannelHistoryParams>) {
-      const { client, allowedChannels } = ctx;
+      const { client, channelsPromise } = ctx;
+      const allowedChannels = await channelsPromise;
       const { channelId } = params;
       const limit = Math.min(params.limit ?? 20, 100);
 
