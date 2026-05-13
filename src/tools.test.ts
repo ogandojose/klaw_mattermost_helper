@@ -71,7 +71,7 @@ function mockClient(overrides: Partial<MattermostClient> = {}): MattermostClient
 }
 
 function makeCtx(client: MattermostClient, channels: ResolvedChannel[] = [CHANNEL_RAKE]) {
-  return { client, channelsPromise: Promise.resolve(channels) };
+  return Promise.resolve({ client, channelsPromise: Promise.resolve(channels) });
 }
 
 // ---------------------------------------------------------------------------

@@ -41,7 +41,7 @@ const ch = await client.resolveChannelName(channelId).catch(() => client.getChan
 const channel: ResolvedChannel = { id: ch.id, name: ch.name, displayName: ch.display_name };
 console.log(`  → #${channel.displayName}  id: ${channel.id}`);
 
-const ctx = { client, channelsPromise: Promise.resolve([channel]) };
+const ctx = Promise.resolve({ client, channelsPromise: Promise.resolve([channel]) });
 
 // list_channels
 console.log("\n[mattermost_list_channels]");

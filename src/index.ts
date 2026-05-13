@@ -6,6 +6,7 @@ import {
   makeGetThreadContextTool,
   makeListChannelsTool,
   makeGetChannelHistoryTool,
+  type ToolContext,
 } from "./tools.js";
 
 async function resolveChannels(
@@ -45,32 +46,33 @@ export default definePluginEntry({
   description: "Search and explore Mattermost channels and conversations",
 
   register(api) {
-    // Skip side-effect work during capability-discovery passes.
+    // Guard side effects during capability-discovery passes.
+    // Tools must still be registered so OpenClaw's registry snapshot
+    // classifies this plugin as a tool provider, not "non-capability".
     if (api.registrationMode !== "full") return;
 
-    // api.pluginConfig contains the value from plugins.entries.mattermost-search.config
-    const rawConfig = api.pluginConfig;
-    let config;
-    try {
-      config = validateConfig(rawConfig);
-    } catch (err) {
-      console.warn(`[mattermost-search] Plugin not configured: ${err}. Set plugins.entries.mattermost-search.config in openclaw.json and restart the gateway.`);
-      return;
-    }
+    // Build context lazily so tools are always registered even when the
+    // plugin is not yet configured.  Each tool awaits ctxPromise at
+    // execution time and surfaces a helpful error if config is missing.
+    const ctxPromise: Promise<ToolContext> = (async () => {
+      const config = validateConfig(api.pluginConfig);
+      const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
+      const channelsPromise = resolveChannels(client, config.allowedChannels);
+      return { client, channelsPromise };
+    })();
 
-    const client = new MattermostClient(config.baseUrl, config.botToken, config.teamId);
+    // Log config/resolution errors without blocking registration.
+    ctxPromise.catch((err) => {
+      console.warn(
+        `[mattermost-search] Plugin not configured: ${err}. ` +
+        `Set plugins.entries.mattermost-search.config in openclaw.json and restart the gateway.`
+      );
+    });
 
-    // Kick off channel resolution in the background.
-    // Each tool awaits this promise before executing, so resolution happens
-    // on the first tool call rather than blocking plugin registration.
-    const channelsPromise = resolveChannels(client, config.allowedChannels);
-
-    const ctx = { client, channelsPromise };
-
-    api.registerTool(makeSearchMessagesTool(ctx));
-    api.registerTool(makeGetThreadContextTool(ctx));
-    api.registerTool(makeListChannelsTool(ctx));
-    api.registerTool(makeGetChannelHistoryTool(ctx));
+    api.registerTool(makeSearchMessagesTool(ctxPromise));
+    api.registerTool(makeGetThreadContextTool(ctxPromise));
+    api.registerTool(makeListChannelsTool(ctxPromise));
+    api.registerTool(makeGetChannelHistoryTool(ctxPromise));
   },
 });
 

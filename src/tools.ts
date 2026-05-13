@@ -96,7 +96,7 @@ function r(text: string) {
 // Tool factories
 // ---------------------------------------------------------------------------
 
-export function makeSearchMessagesTool(ctx: ToolContext) {
+export function makeSearchMessagesTool(ctxPromise: Promise<ToolContext>) {
   return {
     name: "mattermost_search_messages" as const,
     label: "Search Mattermost Messages",
@@ -106,7 +106,7 @@ export function makeSearchMessagesTool(ctx: ToolContext) {
       "Supports Mattermost search syntax (quoted phrases, from:user, before/after dates).",
     parameters: SearchMessagesParams,
     async execute(_id: string, params: Static<typeof SearchMessagesParams>) {
-      const { client, channelsPromise } = ctx;
+      const { client, channelsPromise } = await ctxPromise;
       const allowedChannels = await channelsPromise;
       const { query, channelId } = params;
 
@@ -144,7 +144,7 @@ export function makeSearchMessagesTool(ctx: ToolContext) {
   };
 }
 
-export function makeGetThreadContextTool(ctx: ToolContext) {
+export function makeGetThreadContextTool(ctxPromise: Promise<ToolContext>) {
   return {
     name: "mattermost_get_thread_context" as const,
     label: "Get Thread Context",
@@ -154,7 +154,7 @@ export function makeGetThreadContextTool(ctx: ToolContext) {
       "Use this to understand the context of a message found via mattermost_search_messages.",
     parameters: GetThreadContextParams,
     async execute(_id: string, params: Static<typeof GetThreadContextParams>) {
-      const { client, channelsPromise } = ctx;
+      const { client, channelsPromise } = await ctxPromise;
       const allowedChannels = await channelsPromise;
       const { postId, channelId, threadMode } = params;
       const before = Math.min(params.before ?? 5, 25);
@@ -195,14 +195,15 @@ export function makeGetThreadContextTool(ctx: ToolContext) {
   };
 }
 
-export function makeListChannelsTool(ctx: ToolContext) {
+export function makeListChannelsTool(ctxPromise: Promise<ToolContext>) {
   return {
     name: "mattermost_list_channels" as const,
     label: "List Mattermost Channels",
     description: "List all Mattermost channels this plugin is configured to access.",
     parameters: ListChannelsParams,
     async execute(_id: string, _params: Static<typeof ListChannelsParams>) {
-      const allowedChannels = await ctx.channelsPromise;
+      const { channelsPromise } = await ctxPromise;
+      const allowedChannels = await channelsPromise;
       const lines = allowedChannels.map(
         (c) => `• ${c.displayName}  (name: ${c.name}, id: ${c.id})`
       );
@@ -211,14 +212,14 @@ export function makeListChannelsTool(ctx: ToolContext) {
   };
 }
 
-export function makeGetChannelHistoryTool(ctx: ToolContext) {
+export function makeGetChannelHistoryTool(ctxPromise: Promise<ToolContext>) {
   return {
     name: "mattermost_get_channel_history" as const,
     label: "Get Channel History",
     description: "Fetch the most recent messages from a Mattermost channel, newest first.",
     parameters: GetChannelHistoryParams,
     async execute(_id: string, params: Static<typeof GetChannelHistoryParams>) {
-      const { client, channelsPromise } = ctx;
+      const { client, channelsPromise } = await ctxPromise;
       const allowedChannels = await channelsPromise;
       const { channelId } = params;
       const limit = Math.min(params.limit ?? 20, 100);
